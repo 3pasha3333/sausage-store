@@ -1,0 +1,22 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    - echo "Сборка проекта"
+    - build_command
+
+test_job:
+  stage: test
+  script:
+    - echo "Тестирование проекта"
+    - test_command
+
+deploy_job:
+  stage: deploy
+  script:
+    - echo "Развертывание проекта"
+    - deploy_command
