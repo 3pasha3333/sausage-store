@@ -1,0 +1,99 @@
+version: "3.8"
+services:
+
+  backend-blue:
+    image: $CI_REGISTRY_IMAGE/sausage-backend:latest
+#    container_name: backend-blue
+    restart: always
+    environment:
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_URL: ${VAULT_URL}
+      REPORT_PATH: /app/log/reports
+      LOG_PATH: /app/log
+      VIRTUAL_HOST: "backend"
+    healthcheck:
+      test: curl --fail -s http://localhost:8080/actuator/health
+      interval: 30s
+      start_period: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - sausage-store
+
+  backend-green:
+    image: $CI_REGISTRY_IMAGE/sausage-backend:latest
+#    container_name: backend-green
+    restart: always
+    environment:
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_URL: ${VAULT_URL}
+      REPORT_PATH: /app/log/reports
+      LOG_PATH: /app/log
+      VIRTUAL_HOST: "backend"
+    healthcheck:
+      test: curl --fail -s http://localhost:8080/actuator/health
+      interval: 30s
+      start_period: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - sausage-store
+
+  backend-report:
+    image: $CI_REGISTRY_IMAGE/sausage-backend-report:latest
+    container_name: backend-report
+    restart: always
+    environment:
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_URL: ${VAULT_URL}
+    depends_on:
+      - vault
+    networks:
+      - sausage-store
+  
+  frontend:
+    image: $CI_REGISTRY_IMAGE/sausage-frontend:latest
+    container_name: frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - web-root:/usr/share/nginx/html
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+    environment:
+      DEFAULT_HOST: "backend"
+      VIRTUAL_PORT: "8080"
+    networks:
+      - sausage-store
+  
+  certbot:
+    image: certbot/certbot:v1.29.0
+    container_name: certbot
+    volumes:
+      - web-root:/usr/share/nginx/html
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+    command: certonly --webroot --webroot-path=/usr/share/nginx/html --email ${CERTBOT_EMAIL} --agree-tos --no-eff-email --force-renewal -d ${CERTBOT_DOMAIN}
+
+  vault:
+    image: vault:1.11.2
+    container_name: vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
+      VAULT_SERVER: "http://127.0.0.1:8200"
+      VAULT_ADDR: "http://127.0.0.1:8200"
+    ports:
+      - "8200:8200"
+    networks:
+      - sausage-store
+
+networks:
+  sausage-store:
+
+volumes:
+  certbot-etc:
+  certbot-var:
+  web-root:
